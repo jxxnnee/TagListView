@@ -23,7 +23,6 @@ open class TagListView: UIView {
             }
         }
     }
-    
     @IBInspectable open dynamic var selectedTextColor: UIColor = .white {
         didSet {
             tagViews.forEach {
@@ -117,12 +116,6 @@ open class TagListView: UIView {
         }
     }
     @IBInspectable open dynamic var marginX: CGFloat = 5 {
-        didSet {
-            rearrangeViews()
-        }
-    }
-
-    @IBInspectable open dynamic var minWidth: CGFloat = 0 {
         didSet {
             rearrangeViews()
         }
@@ -294,7 +287,6 @@ open class TagListView: UIView {
                 x: currentRowWidth,
                 y: 0)
             tagBackgroundView.frame.size = tagView.bounds.size
-            tagView.frame.size.width = max(minWidth, tagView.frame.size.width)
             tagBackgroundView.layer.shadowColor = shadowColor.cgColor
             tagBackgroundView.layer.shadowPath = UIBezierPath(roundedRect: tagBackgroundView.bounds, cornerRadius: cornerRadius).cgPath
             tagBackgroundView.layer.shadowOffset = shadowOffset
@@ -366,6 +358,39 @@ open class TagListView: UIView {
         
         return tagView
     }
+    
+    private func createNewAttrStrTagView(_ title: NSMutableAttributedString) -> TagView {
+        let tagView = TagView(title: title)
+        
+        tagView.textColor = textColor
+        tagView.selectedTextColor = selectedTextColor
+        tagView.tagBackgroundColor = tagBackgroundColor
+        tagView.highlightedBackgroundColor = tagHighlightedBackgroundColor
+        tagView.selectedBackgroundColor = tagSelectedBackgroundColor
+        tagView.titleLineBreakMode = tagLineBreakMode
+        tagView.cornerRadius = cornerRadius
+        tagView.borderWidth = borderWidth
+        tagView.borderColor = borderColor
+        tagView.selectedBorderColor = selectedBorderColor
+        tagView.paddingX = paddingX
+        tagView.paddingY = paddingY
+        tagView.textFont = textFont
+        tagView.removeIconLineWidth = removeIconLineWidth
+        tagView.removeButtonIconSize = removeButtonIconSize
+        tagView.enableRemoveButton = enableRemoveButton
+        tagView.removeIconLineColor = removeIconLineColor
+        tagView.addTarget(self, action: #selector(tagPressed(_:)), for: .touchUpInside)
+        tagView.removeButton.addTarget(self, action: #selector(removeButtonPressed(_:)), for: .touchUpInside)
+        
+        // On long press, deselect all tags except this one
+        tagView.onLongPress = { [unowned self] this in
+            self.tagViews.forEach {
+                $0.isSelected = $0 == this
+            }
+        }
+        
+        return tagView
+    }
 
     @discardableResult
     open func addTag(_ title: String) -> TagView {
@@ -376,6 +401,16 @@ open class TagListView: UIView {
     @discardableResult
     open func addTags(_ titles: [String]) -> [TagView] {
         return addTagViews(titles.map(createNewTagView))
+    }
+    
+    @discardableResult
+    open func addTagsWithAttributedString(_ titles: [NSMutableAttributedString]) -> [TagView] {
+        return addTagViews(titles.map(createNewAttrStrTagView))
+    }
+    
+    @discardableResult
+    open func setTagsWithAttrStr(_ titles: [NSMutableAttributedString]) -> [TagView] {
+        return setTagViews(titles.map(createNewAttrStrTagView))
     }
     
     @discardableResult
@@ -394,6 +429,18 @@ open class TagListView: UIView {
             tagViews.append($0)
             tagBackgroundViews.append(UIView(frame: $0.bounds))
         }
+        return tagViews
+    }
+    
+    @discardableResult
+    open func setTagViews(_ tagViewList: [TagView]) -> [TagView] {
+        defer { rearrangeViews() }
+        removeAllTags()
+        tagViewList.forEach {
+            tagViews.append($0)
+            tagBackgroundViews.append(UIView(frame: $0.bounds))
+        }
+        
         return tagViews
     }
 
@@ -449,7 +496,17 @@ open class TagListView: UIView {
     
     @objc func tagPressed(_ sender: TagView!) {
         sender.onTap?(sender)
-        delegate?.tagPressed?(sender.currentTitle ?? "", tagView: sender, sender: self)
+        var title = sender.currentTitle ?? ""
+        
+        if var string = sender.attributedTitle(for: .normal)?.string {
+            if string.hasPrefix("#") {
+                string.remove(at: string.startIndex)
+            }
+            
+            title = string
+        }
+        
+        delegate?.tagPressed?(title, tagView: sender, sender: self)
     }
     
     @objc func removeButtonPressed(_ closeButton: CloseButton!) {

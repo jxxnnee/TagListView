@@ -80,10 +80,20 @@ open class TagView: UIButton {
             reloadStyles()
         }
     }
+    private var _textFont: UIFont? = nil
+    @IBInspectable open var textFont: UIFont {
+        get {
+            return self._textFont ?? .systemFont(ofSize: 14, weight: .regular)
+        }
+        set(newVal) {
+            self._textFont = newVal
+            titleLabel?.font = self._textFont
+        }
+    }
     
-    @IBInspectable open var textFont: UIFont = .systemFont(ofSize: 12) {
+    @IBInspectable open var attributedString: NSMutableAttributedString = .init(string: "") {
         didSet {
-            titleLabel?.font = textFont
+            setAttributedTitle(attributedString, for: .normal)
         }
     }
     
@@ -167,6 +177,13 @@ open class TagView: UIButton {
         setupView()
     }
     
+    public init(title: NSAttributedString) {
+        super.init(frame: CGRect.zero)
+        setAttributedTitle(title, for: .normal)
+        
+        setupView()
+    }
+    
     private func setupView() {
         titleLabel?.lineBreakMode = titleLineBreakMode
 
@@ -183,7 +200,7 @@ open class TagView: UIButton {
     }
     
     // MARK: - layout
-
+    
     override open var intrinsicContentSize: CGSize {
         var size = titleLabel?.text?.size(withAttributes: [NSAttributedString.Key.font: textFont]) ?? CGSize.zero
         size.height = textFont.pointSize + paddingY * 2
